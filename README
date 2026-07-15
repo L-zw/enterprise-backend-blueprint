@@ -1,0 +1,40 @@
+# Enterprise Backend Blueprint
+
+## Introduction
+
+Enterprise Backend Blueprint is a modern Java backend scaffold based on Spring Boot 3.
+
+It aims to provide a production-ready architecture for enterprise applications.
+
+---
+
+## Features
+
+- Spring Boot 3
+- JWT Authentication
+- Global Exception Handler
+- Unified Response
+- AOP Logging
+- Redis Cache
+- Docker Deployment
+- API Documentation
+
+---
+
+## Roadmap
+
+- [ ] User Module
+- [ ] Role Module
+- [ ] Permission Module
+- [ ] File Service
+- [ ] Scheduled Tasks
+
+---
+
+## Tech Stack
+
+- Java 17
+- Spring Boot
+- MyBatis
+- Redis
+- PostgreSQL
