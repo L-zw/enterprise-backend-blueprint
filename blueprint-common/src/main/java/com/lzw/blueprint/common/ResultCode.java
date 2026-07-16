@@ -2,6 +2,10 @@ package com.lzw.blueprint.common;
 
 import lombok.Getter;
 
+/**
+ * 响应状态码枚举
+ * 统一管理所有业务状态码，避免魔法数字
+ */
 @Getter
 public enum ResultCode {
 

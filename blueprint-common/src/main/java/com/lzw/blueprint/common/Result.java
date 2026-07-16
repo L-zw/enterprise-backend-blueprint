@@ -2,6 +2,10 @@ package com.lzw.blueprint.common;
 
 import lombok.Data;
 
+/**
+ * 统一返回对象
+ * 所有接口统一返回此格式：{ code, message, data }
+ */
 @Data
 public class Result<T> {
 

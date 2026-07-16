@@ -4,25 +4,25 @@ import com.lzw.blueprint.common.ResultCode;
 import lombok.Getter;
 
 /**
- * 业务异常
- * 当业务逻辑校验不通过时抛出，由 GlobalExceptionHandler 统一处理
+ * 通用API异常
+ * 业务层抛出此异常，由 GlobalExceptionHandler 统一处理返回 Result
  */
 @Getter
-public class BusinessException extends RuntimeException {
+public class ApiException extends RuntimeException {
 
     private final Integer code;
 
-    public BusinessException(String message) {
+    public ApiException(String message) {
         super(message);
         this.code = ResultCode.FAIL.getCode();
     }
 
-    public BusinessException(Integer code, String message) {
+    public ApiException(Integer code, String message) {
         super(message);
         this.code = code;
     }
 
-    public BusinessException(ResultCode resultCode) {
+    public ApiException(ResultCode resultCode) {
         super(resultCode.getMessage());
         this.code = resultCode.getCode();
     }

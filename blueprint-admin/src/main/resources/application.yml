@@ -6,3 +6,9 @@ spring:
     name: blueprint-admin
   profiles:
     active: dev
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
