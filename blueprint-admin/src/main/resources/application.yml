@@ -16,6 +16,10 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+jwt:
+  secret: blueprint-secret-key-2026-enterprise-ai-backend-lzw
+  expiration: 86400000
+
 springdoc:
   api-docs:
     enabled: true

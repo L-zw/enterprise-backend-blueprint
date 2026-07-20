@@ -7,4 +7,6 @@ import com.lzw.blueprint.core.service.BaseService;
  * 系统用户 Service
  */
 public interface SysUserService extends BaseService<SysUser> {
+
+    SysUser findByUsername(String username);
 }
