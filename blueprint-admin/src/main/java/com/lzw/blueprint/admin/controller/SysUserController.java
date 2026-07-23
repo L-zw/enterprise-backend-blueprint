@@ -5,6 +5,7 @@ import com.lzw.blueprint.admin.service.SysUserService;
 import com.lzw.blueprint.common.PageQuery;
 import com.lzw.blueprint.common.PageResult;
 import com.lzw.blueprint.common.Result;
+import com.lzw.blueprint.core.annotation.RequirePermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,12 +24,14 @@ public class SysUserController extends BaseController {
     private SysUserService sysUserService;
 
     @Operation(summary = "分页查询用户")
+    @RequirePermission("sys:user:list")
     @GetMapping
     public Result<PageResult<SysUser>> list(PageQuery query) {
         return success(sysUserService.selectPage(query));
     }
 
     @Operation(summary = "创建用户")
+    @RequirePermission("sys:user:create")
     @PostMapping
     public Result<Integer> create(@Valid @RequestBody SysUser user) {
         return success(sysUserService.insert(user));

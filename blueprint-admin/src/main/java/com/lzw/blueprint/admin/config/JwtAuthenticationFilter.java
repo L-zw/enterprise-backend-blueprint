@@ -1,6 +1,7 @@
 package com.lzw.blueprint.admin.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.common.Result;
 import com.lzw.blueprint.common.ResultCode;
 import com.lzw.blueprint.core.util.JwtUtil;
@@ -13,10 +14,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * JWT 鉴权过滤器
  * 拦截所有请求，校验 Authorization: Bearer <token>
+ * 校验通过后加载用户权限列表，存入 request attribute
  * 白名单路径（/auth/login, /hello, /swagger-ui, /v3/api-docs）放行
  */
 @Component
@@ -24,6 +27,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private SysMenuService sysMenuService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -46,6 +52,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtUtil.validateToken(token)) {
                 Long userId = jwtUtil.getUserId(token);
                 request.setAttribute("userId", userId);
+                List<String> permissions = sysMenuService.getPermissionsByUserId(userId);
+                request.setAttribute("permissions", permissions);
                 chain.doFilter(request, response);
                 return;
             }
