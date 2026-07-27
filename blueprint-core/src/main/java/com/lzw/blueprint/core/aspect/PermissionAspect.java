@@ -16,12 +16,11 @@ import java.util.List;
 /**
  * 权限校验切面
  * 拦截 @RequirePermission 注解，检查当前用户是否拥有指定权限
+ * 超级管理员（admin 角色）跳过所有权限校验
  */
 @Aspect
 @Component
 public class PermissionAspect {
-
-    private final List<String> adminPermissions = List.of("*");
 
     @Around("@annotation(requirePermission)")
     public Object checkPermission(ProceedingJoinPoint pjp, RequirePermission requirePermission) throws Throwable {
@@ -30,6 +29,11 @@ public class PermissionAspect {
 
         if (userId == null) {
             throw new ApiException(ResultCode.UNAUTHORIZED);
+        }
+
+        List<String> roles = (List<String>) request.getAttribute("roles");
+        if (roles != null && roles.contains("admin")) {
+            return pjp.proceed();
         }
 
         List<String> permissions = (List<String>) request.getAttribute("permissions");

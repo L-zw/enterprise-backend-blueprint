@@ -26,4 +26,6 @@ public interface SysMenuService {
     int update(SysMenu menu);
 
     int deleteById(Long id);
+
+    void clearPermissionCache(Long userId);
 }

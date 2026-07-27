@@ -1,5 +1,6 @@
 package com.lzw.blueprint.admin.controller;
 
+import com.lzw.blueprint.admin.dto.UserRoleDTO;
 import com.lzw.blueprint.admin.entity.SysUser;
 import com.lzw.blueprint.admin.service.SysUserService;
 import com.lzw.blueprint.common.PageQuery;
@@ -11,6 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 系统用户管理接口
@@ -35,5 +38,20 @@ public class SysUserController extends BaseController {
     @PostMapping
     public Result<Integer> create(@Valid @RequestBody SysUser user) {
         return success(sysUserService.insert(user));
+    }
+
+    @Operation(summary = "获取用户已分配角色ID")
+    @RequirePermission("sys:user:role")
+    @GetMapping("/{userId}/roles")
+    public Result<List<Long>> getRoles(@PathVariable Long userId) {
+        return success(sysUserService.getRoleIds(userId));
+    }
+
+    @Operation(summary = "更新用户-角色分配")
+    @RequirePermission("sys:user:role")
+    @PutMapping("/{userId}/roles")
+    public Result<Void> updateRoles(@PathVariable Long userId, @RequestBody UserRoleDTO dto) {
+        sysUserService.updateRoles(userId, dto.getRoleIds());
+        return success();
     }
 }

@@ -1,6 +1,7 @@
 package com.lzw.blueprint.admin.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lzw.blueprint.admin.mapper.SysUserRoleMapper;
 import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.common.Result;
 import com.lzw.blueprint.common.ResultCode;
@@ -20,7 +21,7 @@ import java.util.List;
 /**
  * JWT 鉴权过滤器
  * 拦截所有请求，校验 Authorization: Bearer <token>
- * 校验通过后加载用户权限列表（走缓存），存入 request attribute
+ * 校验通过后加载用户角色和权限列表（走缓存），存入 request attribute
  * 白名单路径（/auth/login, /hello, /swagger-ui, /v3/api-docs）放行
  */
 @Component
@@ -31,6 +32,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private SysMenuService sysMenuService;
+
+    @Autowired
+    private SysUserRoleMapper sysUserRoleMapper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -53,6 +57,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtUtil.validateToken(token)) {
                 Long userId = jwtUtil.getUserId(token);
                 request.setAttribute("userId", userId);
+                List<String> roles = sysUserRoleMapper.selectRoleCodesByUserId(userId);
+                request.setAttribute("roles", roles);
                 List<String> permissions = new ArrayList<>(sysMenuService.getPermissionSet(userId));
                 request.setAttribute("permissions", permissions);
                 chain.doFilter(request, response);
