@@ -4,6 +4,7 @@ import com.lzw.blueprint.admin.entity.SysMenu;
 import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.admin.vo.MenuVO;
 import com.lzw.blueprint.common.Result;
+import com.lzw.blueprint.core.annotation.OperationLog;
 import com.lzw.blueprint.core.annotation.RequirePermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,7 @@ public class SysMenuController extends BaseController {
     }
 
     @Operation(summary = "创建菜单")
+    @OperationLog(module = "菜单管理", operation = "创建菜单", target = "#menu.name")
     @RequirePermission("sys:menu:create")
     @PostMapping
     public Result<Integer> create(@Valid @RequestBody SysMenu menu) {
@@ -43,6 +45,7 @@ public class SysMenuController extends BaseController {
     }
 
     @Operation(summary = "更新菜单")
+    @OperationLog(module = "菜单管理", operation = "更新菜单", target = "#menu.name")
     @RequirePermission("sys:menu:update")
     @PutMapping("/{id}")
     public Result<Integer> update(@PathVariable Long id, @Valid @RequestBody SysMenu menu) {
@@ -51,6 +54,7 @@ public class SysMenuController extends BaseController {
     }
 
     @Operation(summary = "删除菜单")
+    @OperationLog(module = "菜单管理", operation = "删除菜单", target = "#id")
     @RequirePermission("sys:menu:delete")
     @DeleteMapping("/{id}")
     public Result<Integer> delete(@PathVariable Long id) {

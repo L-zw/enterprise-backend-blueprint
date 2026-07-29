@@ -8,6 +8,7 @@ import com.lzw.blueprint.admin.vo.LoginResponse;
 import com.lzw.blueprint.admin.vo.MenuVO;
 import com.lzw.blueprint.common.Result;
 import com.lzw.blueprint.common.ResultCode;
+import com.lzw.blueprint.core.annotation.OperationLog;
 import com.lzw.blueprint.core.util.JwtUtil;
 import com.lzw.blueprint.core.util.PasswordEncoderUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,6 +46,7 @@ public class AuthController extends BaseController {
     private PasswordEncoderUtil passwordEncoderUtil;
 
     @Operation(summary = "用户登录")
+    @OperationLog(module = "认证管理", operation = "用户登录", target = "#request.username")
     @PostMapping("/login")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         SysUser user = sysUserService.findByUsername(request.getUsername());

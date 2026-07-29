@@ -57,6 +57,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtUtil.validateToken(token)) {
                 Long userId = jwtUtil.getUserId(token);
                 request.setAttribute("userId", userId);
+                request.setAttribute("username", jwtUtil.getUsername(token));
                 List<String> roles = sysUserRoleMapper.selectRoleCodesByUserId(userId);
                 request.setAttribute("roles", roles);
                 List<String> permissions = new ArrayList<>(sysMenuService.getPermissionSet(userId));

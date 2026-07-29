@@ -6,6 +6,7 @@ import com.lzw.blueprint.admin.service.SysUserService;
 import com.lzw.blueprint.common.PageQuery;
 import com.lzw.blueprint.common.PageResult;
 import com.lzw.blueprint.common.Result;
+import com.lzw.blueprint.core.annotation.OperationLog;
 import com.lzw.blueprint.core.annotation.RequirePermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +35,7 @@ public class SysUserController extends BaseController {
     }
 
     @Operation(summary = "创建用户")
+    @OperationLog(module = "用户管理", operation = "创建用户", target = "#user.username")
     @RequirePermission("sys:user:create")
     @PostMapping
     public Result<Integer> create(@Valid @RequestBody SysUser user) {
@@ -48,6 +50,7 @@ public class SysUserController extends BaseController {
     }
 
     @Operation(summary = "更新用户-角色分配")
+    @OperationLog(module = "用户管理", operation = "分配角色", target = "#userId")
     @RequirePermission("sys:user:role")
     @PutMapping("/{userId}/roles")
     public Result<Void> updateRoles(@PathVariable Long userId, @RequestBody UserRoleDTO dto) {

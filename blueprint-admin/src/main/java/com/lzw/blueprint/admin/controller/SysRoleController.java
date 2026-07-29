@@ -6,6 +6,7 @@ import com.lzw.blueprint.admin.service.SysRoleService;
 import com.lzw.blueprint.common.PageQuery;
 import com.lzw.blueprint.common.PageResult;
 import com.lzw.blueprint.common.Result;
+import com.lzw.blueprint.core.annotation.OperationLog;
 import com.lzw.blueprint.core.annotation.RequirePermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +32,7 @@ public class SysRoleController extends BaseController {
     }
 
     @Operation(summary = "创建角色")
+    @OperationLog(module = "角色管理", operation = "创建角色", target = "#role.name")
     @RequirePermission("sys:role:create")
     @PostMapping
     public Result<Integer> create(@Valid @RequestBody SysRole role) {
@@ -38,6 +40,7 @@ public class SysRoleController extends BaseController {
     }
 
     @Operation(summary = "更新角色")
+    @OperationLog(module = "角色管理", operation = "更新角色", target = "#role.name")
     @RequirePermission("sys:role:update")
     @PutMapping("/{id}")
     public Result<Integer> update(@PathVariable Long id, @Valid @RequestBody SysRole role) {
@@ -46,6 +49,7 @@ public class SysRoleController extends BaseController {
     }
 
     @Operation(summary = "删除角色")
+    @OperationLog(module = "角色管理", operation = "删除角色", target = "#id")
     @RequirePermission("sys:role:delete")
     @DeleteMapping("/{id}")
     public Result<Integer> delete(@PathVariable Long id) {
@@ -60,6 +64,7 @@ public class SysRoleController extends BaseController {
     }
 
     @Operation(summary = "更新角色-菜单分配")
+    @OperationLog(module = "角色管理", operation = "分配菜单", target = "#roleId")
     @RequirePermission("sys:role:menu")
     @PutMapping("/{roleId}/menus")
     public Result<Void> updateMenus(@PathVariable Long roleId, @RequestBody RoleMenuDTO dto) {
