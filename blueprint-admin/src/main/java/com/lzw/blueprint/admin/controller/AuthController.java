@@ -9,7 +9,9 @@ import com.lzw.blueprint.admin.vo.MenuVO;
 import com.lzw.blueprint.common.Result;
 import com.lzw.blueprint.common.ResultCode;
 import com.lzw.blueprint.core.annotation.OperationLog;
+import com.lzw.blueprint.core.annotation.RateLimiter;
 import com.lzw.blueprint.core.util.JwtUtil;
+import com.lzw.blueprint.core.util.TokenBlacklistUtil;
 import com.lzw.blueprint.core.util.PasswordEncoderUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,8 +47,12 @@ public class AuthController extends BaseController {
     @Autowired
     private PasswordEncoderUtil passwordEncoderUtil;
 
+    @Autowired
+    private TokenBlacklistUtil tokenBlacklistUtil;
+
     @Operation(summary = "用户登录")
     @OperationLog(module = "认证管理", operation = "用户登录", target = "#request.username")
+    @RateLimiter(key = "#ip", max = 5, period = 60)
     @PostMapping("/login")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         SysUser user = sysUserService.findByUsername(request.getUsername());
@@ -58,6 +64,16 @@ public class AuthController extends BaseController {
         resp.setToken(token);
         resp.setUsername(user.getUsername());
         return success(resp);
+    }
+
+    @Operation(summary = "退出登录")
+    @PostMapping("/logout")
+    public Result<Void> logout(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            tokenBlacklistUtil.blacklist(authHeader.substring(7));
+        }
+        return success();
     }
 
     @Operation(summary = "当前用户路由树")

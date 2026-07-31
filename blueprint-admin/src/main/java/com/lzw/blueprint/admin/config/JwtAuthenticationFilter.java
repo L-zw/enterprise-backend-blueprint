@@ -6,6 +6,7 @@ import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.common.Result;
 import com.lzw.blueprint.common.ResultCode;
 import com.lzw.blueprint.core.util.JwtUtil;
+import com.lzw.blueprint.core.util.TokenBlacklistUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private SysUserRoleMapper sysUserRoleMapper;
 
+    @Autowired
+    private TokenBlacklistUtil tokenBlacklistUtil;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -55,6 +59,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             if (jwtUtil.validateToken(token)) {
+                if (tokenBlacklistUtil.isBlacklisted(token)) {
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.setStatus(401);
+                    objectMapper.writeValue(response.getWriter(), Result.fail(ResultCode.UNAUTHORIZED));
+                    return;
+                }
                 Long userId = jwtUtil.getUserId(token);
                 request.setAttribute("userId", userId);
                 request.setAttribute("username", jwtUtil.getUsername(token));

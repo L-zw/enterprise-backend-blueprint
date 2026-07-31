@@ -4,9 +4,9 @@ import com.lzw.blueprint.admin.entity.SysMenu;
 import com.lzw.blueprint.admin.mapper.SysMenuMapper;
 import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.admin.vo.MenuVO;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,7 +14,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -26,27 +25,21 @@ public class SysMenuServiceImpl implements SysMenuService {
     @Autowired
     private SysMenuMapper sysMenuMapper;
 
-    private final Cache<Long, Set<String>> permissionCache = Caffeine.newBuilder()
-            .expireAfterWrite(5, TimeUnit.MINUTES)
-            .maximumSize(1000)
-            .build();
-
     @Override
     public List<String> getPermissionsByUserId(Long userId) {
         return sysMenuMapper.findPermissionsByUserId(userId);
     }
 
+    @Cacheable(value = "permissions", key = "#userId")
     @Override
     public Set<String> getPermissionSet(Long userId) {
-        return permissionCache.get(userId, k -> {
-            List<String> list = sysMenuMapper.findPermissionsByUserId(k);
-            return new HashSet<>(list);
-        });
+        List<String> list = sysMenuMapper.findPermissionsByUserId(userId);
+        return new HashSet<>(list);
     }
 
-    public void clearPermissionCache(Long userId) {
-        permissionCache.invalidate(userId);
-    }
+    @CacheEvict(value = "permissions", key = "#userId")
+    @Override
+    public void clearPermissionCache(Long userId) {}
 
     @Override
     public List<MenuVO> getMenuTree() {
