@@ -10,7 +10,9 @@ import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.admin.service.SysRoleService;
 import com.lzw.blueprint.common.PageQuery;
 import com.lzw.blueprint.common.PageResult;
+import com.lzw.blueprint.common.constant.CacheNames;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,12 +68,14 @@ public class SysRoleServiceImpl implements SysRoleService {
     }
 
     @Override
+    @Cacheable(value = CacheNames.ROLE_MENUS, key = "#roleId")
     public List<Long> getMenuIds(Long roleId) {
         return sysRoleMenuMapper.selectMenuIdsByRoleId(roleId);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheNames.ROLE_MENUS, key = "#roleId")
     public void updateMenus(Long roleId, List<Long> menuIds) {
         sysRoleMenuMapper.deleteByRoleId(roleId);
         for (Long menuId : menuIds) {

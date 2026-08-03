@@ -2,8 +2,10 @@ package com.lzw.blueprint.admin.service.impl;
 
 import com.lzw.blueprint.admin.entity.SysMenu;
 import com.lzw.blueprint.admin.mapper.SysMenuMapper;
+import com.lzw.blueprint.admin.service.PermissionCacheService;
 import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.admin.vo.MenuVO;
+import com.lzw.blueprint.common.constant.CacheNames;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -11,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -25,28 +26,25 @@ public class SysMenuServiceImpl implements SysMenuService {
     @Autowired
     private SysMenuMapper sysMenuMapper;
 
+    @Autowired
+    private PermissionCacheService permissionCacheService;
+
     @Override
     public List<String> getPermissionsByUserId(Long userId) {
         return sysMenuMapper.findPermissionsByUserId(userId);
     }
 
-    @Cacheable(value = "permissions", key = "#userId")
     @Override
     public Set<String> getPermissionSet(Long userId) {
-        List<String> list = sysMenuMapper.findPermissionsByUserId(userId);
-        return new HashSet<>(list);
+        return permissionCacheService.getPermissions(userId);
     }
 
-    @CacheEvict(value = "permissions", key = "#userId")
     @Override
-    public void clearPermissionCache(Long userId) {}
-
-    @Override
-    public List<MenuVO> getMenuTree() {
-        List<SysMenu> all = sysMenuMapper.selectList(null);
-        return buildTree(all, 0L);
+    public void clearPermissionCache(Long userId) {
+        permissionCacheService.clearPermissions(userId);
     }
 
+    @Cacheable(value = CacheNames.ROUTERS, key = "#userId")
     @Override
     public List<MenuVO> getRouterTree(Long userId) {
         List<SysMenu> menus = sysMenuMapper.selectByUserId(userId);
@@ -54,6 +52,12 @@ public class SysMenuServiceImpl implements SysMenuService {
                 .filter(m -> m.getType() != null && m.getType() != 3)
                 .collect(Collectors.toList());
         return buildTree(filtered, 0L);
+    }
+
+    @Override
+    public List<MenuVO> getMenuTree() {
+        List<SysMenu> all = sysMenuMapper.selectList(null);
+        return buildTree(all, 0L);
     }
 
     @Override
@@ -67,11 +71,13 @@ public class SysMenuServiceImpl implements SysMenuService {
     }
 
     @Override
+    @CacheEvict(value = CacheNames.ROUTERS, allEntries = true)
     public int update(SysMenu menu) {
         return sysMenuMapper.updateById(menu);
     }
 
     @Override
+    @CacheEvict(value = CacheNames.ROUTERS, allEntries = true)
     public int deleteById(Long id) {
         return sysMenuMapper.deleteById(id);
     }

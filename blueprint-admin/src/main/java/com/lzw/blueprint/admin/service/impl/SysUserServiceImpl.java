@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lzw.blueprint.admin.entity.SysUser;
 import com.lzw.blueprint.admin.mapper.SysUserMapper;
 import com.lzw.blueprint.admin.mapper.SysUserRoleMapper;
+import com.lzw.blueprint.admin.service.SysMenuService;
 import com.lzw.blueprint.admin.service.SysUserService;
 import com.lzw.blueprint.core.service.impl.BaseServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
 
     @Autowired
     private SysUserRoleMapper sysUserRoleMapper;
+
+    @Autowired
+    private SysMenuService sysMenuService;
 
     @Override
     public SysUser findByUsername(String username) {
@@ -39,5 +43,6 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
         for (Long roleId : roleIds) {
             sysUserRoleMapper.insert(userId, roleId);
         }
+        sysMenuService.clearPermissionCache(userId);
     }
 }
