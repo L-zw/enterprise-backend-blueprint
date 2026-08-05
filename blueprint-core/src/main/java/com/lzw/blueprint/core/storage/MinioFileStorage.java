@@ -53,7 +53,7 @@ public class MinioFileStorage implements FileStorage {
                             .stream(file.getInputStream(), file.getSize(), -1)
                             .contentType(file.getContentType())
                             .build());
-            return getUrl(storedName);
+            return "";
         } catch (Exception e) {
             throw new RuntimeException("文件上传到 MinIO 失败", e);
         }

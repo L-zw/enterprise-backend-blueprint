@@ -16,7 +16,7 @@ public class FileStorageFactory {
     @Autowired
     public FileStorageFactory(List<FileStorage> storages) {
         this.storageMap = storages.stream()
-                .collect(Collectors.toMap(FileStorage::getType, Function.identity()));
+                .collect(Collectors.toMap(FileStorage::getType, Function.identity(), (a, b) -> a));
     }
 
     public FileStorage getStorage(String type) {

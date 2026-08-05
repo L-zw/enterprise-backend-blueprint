@@ -129,8 +129,9 @@ public class FileServiceImpl implements FileService {
             } catch (MalformedURLException e) {
                 throw new ApiException("文件读取失败");
             }
+            throw new ApiException("文件不存在");
         }
-        throw new ApiException("文件读取失败，请使用签名 URL 下载");
+        throw new ApiException("MINIO 文件请使用下载接口获取重定向链接");
     }
 
     @Override
@@ -139,11 +140,17 @@ public class FileServiceImpl implements FileService {
         if (!IMAGE_TYPES.contains(sysFile.getMimeType())) {
             throw new ApiException("非图片文件无法预览");
         }
+        return download(id);
+    }
+
+    @Override
+    public String getFileUrl(Long id) {
+        SysFile sysFile = getById(id);
         FileStorage storage = storageFactory.getStorage(sysFile.getStorageType());
-        if ("LOCAL".equals(storage.getType())) {
-            return download(id);
+        if ("MINIO".equals(storage.getType())) {
+            return storage.getUrl(sysFile.getObjectName());
         }
-        throw new ApiException("图片预览不支持 MinIO 存储");
+        return "/api/files/" + id;
     }
 
     @Override

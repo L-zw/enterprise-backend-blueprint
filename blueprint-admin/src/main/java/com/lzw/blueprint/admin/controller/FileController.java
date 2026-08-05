@@ -9,10 +9,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.net.URI;
 
 @Tag(name = "文件管理", description = "文件上传/下载/预览接口")
 @RestController
@@ -32,8 +35,14 @@ public class FileController extends BaseController {
     @Operation(summary = "下载文件")
     @RequirePermission("sys:file:list")
     @GetMapping("/{id}")
-    public ResponseEntity<Resource> download(@PathVariable Long id) {
+    public ResponseEntity<Object> download(@PathVariable Long id) {
         SysFile sysFile = fileService.getById(id);
+        if ("MINIO".equals(sysFile.getStorageType())) {
+            String url = fileService.getFileUrl(id);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(url))
+                    .build();
+        }
         Resource resource = fileService.download(id);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -45,8 +54,17 @@ public class FileController extends BaseController {
     @Operation(summary = "预览文件（图片）")
     @RequirePermission("sys:file:list")
     @GetMapping("/{id}/preview")
-    public ResponseEntity<Resource> preview(@PathVariable Long id) {
+    public ResponseEntity<Object> preview(@PathVariable Long id) {
         SysFile sysFile = fileService.getById(id);
+        if ("MINIO".equals(sysFile.getStorageType())) {
+            if (!isImage(sysFile.getMimeType())) {
+                return ResponseEntity.badRequest().body("非图片文件无法预览");
+            }
+            String url = fileService.getFileUrl(id);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(url))
+                    .build();
+        }
         Resource resource = fileService.preview(id);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(sysFile.getMimeType()))
@@ -58,8 +76,7 @@ public class FileController extends BaseController {
     @RequirePermission("sys:file:list")
     @GetMapping("/{id}/url")
     public Result<String> getUrl(@PathVariable Long id) {
-        SysFile sysFile = fileService.getById(id);
-        return success(sysFile.getUrl());
+        return success(fileService.getFileUrl(id));
     }
 
     @Operation(summary = "删除文件")
@@ -68,5 +85,9 @@ public class FileController extends BaseController {
     public Result<Void> delete(@PathVariable Long id) {
         fileService.delete(id);
         return success();
+    }
+
+    private boolean isImage(String mimeType) {
+        return mimeType != null && mimeType.startsWith("image/");
     }
 }

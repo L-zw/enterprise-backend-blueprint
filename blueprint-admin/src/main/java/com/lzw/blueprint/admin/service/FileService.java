@@ -14,5 +14,7 @@ public interface FileService {
 
     Resource preview(Long id);
 
+    String getFileUrl(Long id);
+
     void delete(Long id);
 }
