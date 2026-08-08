@@ -1,0 +1,19 @@
+blueprint:
+  ai:
+    enabled: true
+    default-provider: openai
+    retry:
+      max-attempts: 3
+      backoff-ms: 1000
+    usage:
+      daily-limit-tokens: 500000
+
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: https://api.openai.com
+      chat:
+        options:
+          model: gpt-4o
+          temperature: 0.7
