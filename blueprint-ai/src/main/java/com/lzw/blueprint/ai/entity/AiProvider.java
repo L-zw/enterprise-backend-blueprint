@@ -19,4 +19,5 @@ public class AiProvider extends BaseEntity {
     private Integer maxRetries;
     private Boolean enabled;
     private Integer priority;
+    private String defaultModel;
 }
