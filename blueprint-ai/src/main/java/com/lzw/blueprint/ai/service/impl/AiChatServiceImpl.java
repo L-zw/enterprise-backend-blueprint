@@ -7,8 +7,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.lzw.blueprint.ai.dto.ChatResponseDto;
 import com.lzw.blueprint.ai.dto.ModelInfoDto;
 import com.lzw.blueprint.ai.entity.AiProvider;
+import com.lzw.blueprint.ai.entity.ChatMessage;
+import com.lzw.blueprint.ai.entity.ChatSession;
 import com.lzw.blueprint.ai.service.AiChatService;
 import com.lzw.blueprint.ai.provider.ProviderRouter;
+import com.lzw.blueprint.ai.service.chat.ChatMessageService;
+import com.lzw.blueprint.ai.service.chat.ChatSessionService;
 import com.lzw.blueprint.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,10 +25,6 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 简易实现：使用标准 Java HttpClient 直接调用 OpenAI‑compatible 接口。
- * 只演示核心流程，未做完整错误处理与模型配置。
- */
 @Service
 @Slf4j
 public class AiChatServiceImpl implements AiChatService {
@@ -34,70 +34,39 @@ public class AiChatServiceImpl implements AiChatService {
     private static final double DEFAULT_TEMPERATURE = 0.7;
 
     private final ProviderRouter providerRouter;
+    private final ChatSessionService chatSessionService;
+    private final ChatMessageService chatMessageService;
 
-    public AiChatServiceImpl(ProviderRouter providerRouter) {
+    public AiChatServiceImpl(ProviderRouter providerRouter,
+                             ChatSessionService chatSessionService,
+                             ChatMessageService chatMessageService) {
         this.providerRouter = providerRouter;
+        this.chatSessionService = chatSessionService;
+        this.chatMessageService = chatMessageService;
     }
 
     @Override
-    public ChatResponseDto chat(String sessionId, String content) {
-        AiProvider provider = providerRouter.resolveProvider(null);
-        // 离线模式：没有可用供应商或缺少 key
-        if (provider == null || provider.getApiKey() == null || provider.getApiKey().isBlank()) {
-            ChatResponseDto fallback = new ChatResponseDto();
-            fallback.setReply("[offline] No AI provider configured");
-            return fallback;
-        }
-        try {
-            String base = provider.getBaseUrl();
-            if (base == null || base.isBlank()) {
-                base = "https://api.openai.com";
-            }
-            String endpoint = base.endsWith("/") ? base + "v1/chat/completions" : base + "/v1/chat/completions";
-            URI uri = URI.create(endpoint);
+    public ChatResponseDto chat(Long userId, String sessionId, String content) {
+        // ponytail: session auto-created on first message, title from first user message
+        ChatSession session = resolveSession(userId, sessionId, content);
+        Long sid = session.getId();
 
-            // 构造请求体
-            ObjectNode root = MAPPER.createObjectNode();
-            String model = provider.getDefaultModel();
-            if (model == null || model.isBlank()) {
-                model = "gpt-3.5-turbo";
-            }
-            root.put("model", model);
-            root.put("temperature", DEFAULT_TEMPERATURE);
-            ArrayNode messages = root.putArray("messages");
-            ObjectNode msg = messages.addObject();
-            msg.put("role", "user");
-            msg.put("content", content);
-            String body = MAPPER.writeValueAsString(root);
+        String reply = callProvider(session, content);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(uri)
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + provider.getApiKey())
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
+        saveUserMessage(sid, content, null);
+        saveAssistantMessage(sid, reply, null, 0, 0, "stop");
 
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
-                throw new BusinessException("AI provider returned status " + response.statusCode());
-            }
-            JsonNode json = MAPPER.readTree(response.body());
-            JsonNode choice = json.path("choices").path(0).path("message").path("content");
-            String reply = choice.isMissingNode() ? "" : choice.asText();
-            ChatResponseDto dto = new ChatResponseDto();
-            dto.setReply(reply);
-            dto.setProviderCode(provider.getProviderCode());
-            return dto;
-        } catch (Exception e) {
-            log.error("AI chat error", e);
-            throw new BusinessException("AI chat failed: " + e.getMessage());
-        }
+        ChatResponseDto dto = new ChatResponseDto();
+        dto.setSessionId(sid);
+        dto.setReply(reply);
+        return dto;
     }
 
     @Override
-    public Flux<String> chatStream(String sessionId, String content) {
-        // 简单包装：返回单一块的 Flux，实际流式可后续完善
-        return Flux.just(chat(sessionId, content).getReply());
+    public Flux<String> chatStream(Long userId, String sessionId, String content) {
+        // ponytail: stream wraps the blocking call; real streaming requires async HTTP client
+        ChatResponseDto response = chat(userId, sessionId, content);
+        return Flux.just(response.getReply());
     }
 
     @Override
@@ -113,5 +82,103 @@ public class AiChatServiceImpl implements AiChatService {
                 })
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    private ChatSession resolveSession(Long userId, String sessionId, String content) {
+        if (sessionId != null && !sessionId.isBlank()) {
+            try {
+                ChatSession existing = chatSessionService.getById(Long.valueOf(sessionId));
+                if (existing != null) return existing;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return chatSessionService.create(userId, truncateTitle(content), null);
+    }
+
+    private void saveUserMessage(Long sessionId, String content, String model) {
+        ChatMessage msg = new ChatMessage();
+        msg.setSessionId(sessionId);
+        msg.setRole("user");
+        msg.setContent(content);
+        msg.setModel(model);
+        chatMessageService.save(msg);
+    }
+
+    private void saveAssistantMessage(Long sessionId, String content, String model, int tokensIn, int tokensOut, String finishReason) {
+        ChatMessage msg = new ChatMessage();
+        msg.setSessionId(sessionId);
+        msg.setRole("assistant");
+        msg.setContent(content);
+        msg.setModel(model);
+        msg.setTokensInput(tokensIn);
+        msg.setTokensOutput(tokensOut);
+        msg.setFinishReason(finishReason);
+        chatMessageService.save(msg);
+    }
+
+    private String truncateTitle(String content) {
+        return content.length() <= 50 ? content : content.substring(0, 50) + "...";
+    }
+
+    private String callProvider(ChatSession session, String userContent) {
+        AiProvider provider = providerRouter.resolveProvider(null);
+        if (provider == null || provider.getApiKey() == null || provider.getApiKey().isBlank()) {
+            return "[offline] No AI provider configured";
+        }
+        try {
+            String base = provider.getBaseUrl();
+            if (base == null || base.isBlank()) {
+                base = "https://api.openai.com";
+            }
+            String endpoint = base.endsWith("/") ? base + "v1/chat/completions" : base + "/v1/chat/completions";
+
+            ObjectNode root = MAPPER.createObjectNode();
+            String model = provider.getDefaultModel();
+            if (model == null || model.isBlank()) {
+                model = "gpt-3.5-turbo";
+            }
+            root.put("model", model);
+            root.put("temperature", session.getTemperature() != null ? session.getTemperature().doubleValue() : DEFAULT_TEMPERATURE);
+
+            ArrayNode messages = root.putArray("messages");
+            if (session.getSystemPrompt() != null && !session.getSystemPrompt().isBlank()) {
+                ObjectNode sys = messages.addObject();
+                sys.put("role", "system");
+                sys.put("content", session.getSystemPrompt());
+            }
+            // context window: include recent messages from session history
+            int ctxSize = session.getContextSize() != null ? session.getContextSize() : 10;
+            List<ChatMessage> history = chatMessageService.listRecentBySessionId(session.getId(), ctxSize);
+            for (ChatMessage msg : history) {
+                ObjectNode m = messages.addObject();
+                m.put("role", msg.getRole());
+                m.put("content", msg.getContent());
+            }
+            // append current user message (not yet saved)
+            ObjectNode userMsg = messages.addObject();
+            userMsg.put("role", "user");
+            userMsg.put("content", userContent);
+
+            String body = MAPPER.writeValueAsString(root);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(endpoint))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + provider.getApiKey())
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new BusinessException("AI provider returned status " + response.statusCode());
+            }
+            JsonNode json = MAPPER.readTree(response.body());
+            return json.path("choices").path(0).path("message").path("content").asText();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("AI chat error", e);
+            throw new BusinessException("AI chat failed: " + e.getMessage());
+        }
     }
 }
