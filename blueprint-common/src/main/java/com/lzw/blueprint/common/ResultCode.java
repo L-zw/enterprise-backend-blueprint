@@ -13,7 +13,8 @@ public enum ResultCode {
     FAIL(500, "fail"),
     UNAUTHORIZED(401, "unauthorized"),
     FORBIDDEN(403, "forbidden"),
-    NOT_FOUND(404, "not found");
+    NOT_FOUND(404, "not found"),
+    TOO_MANY_REQUESTS(429, "too many requests");
 
     private final Integer code;
     private final String message;

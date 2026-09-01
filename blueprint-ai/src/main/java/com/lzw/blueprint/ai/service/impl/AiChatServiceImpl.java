@@ -11,10 +11,13 @@ import com.lzw.blueprint.ai.entity.ChatMessage;
 import com.lzw.blueprint.ai.entity.ChatSession;
 import com.lzw.blueprint.ai.service.AiChatService;
 import com.lzw.blueprint.ai.provider.ProviderRouter;
+import com.lzw.blueprint.ai.service.audit.AiUsageLimitService;
 import com.lzw.blueprint.ai.service.chat.ChatMessageService;
 import com.lzw.blueprint.ai.service.chat.ChatSessionService;
+import com.lzw.blueprint.ai.event.AiUsageEvent;
 import com.lzw.blueprint.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -36,17 +39,25 @@ public class AiChatServiceImpl implements AiChatService {
     private final ProviderRouter providerRouter;
     private final ChatSessionService chatSessionService;
     private final ChatMessageService chatMessageService;
+    private final AiUsageLimitService aiUsageLimitService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AiChatServiceImpl(ProviderRouter providerRouter,
                              ChatSessionService chatSessionService,
-                             ChatMessageService chatMessageService) {
+                             ChatMessageService chatMessageService,
+                             AiUsageLimitService aiUsageLimitService,
+                             ApplicationEventPublisher eventPublisher) {
         this.providerRouter = providerRouter;
         this.chatSessionService = chatSessionService;
         this.chatMessageService = chatMessageService;
+        this.aiUsageLimitService = aiUsageLimitService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
     public ChatResponseDto chat(Long userId, String sessionId, String content) {
+        aiUsageLimitService.checkLimit(userId);
+
         // ponytail: session auto-created on first message, title from first user message
         ChatSession session = resolveSession(userId, sessionId, content);
         Long sid = session.getId();
@@ -55,6 +66,8 @@ public class AiChatServiceImpl implements AiChatService {
 
         saveUserMessage(sid, content, null);
         saveAssistantMessage(sid, reply, null, 0, 0, "stop");
+
+        publishUsage(userId, content, reply);
 
         ChatResponseDto dto = new ChatResponseDto();
         dto.setSessionId(sid);
@@ -118,6 +131,22 @@ public class AiChatServiceImpl implements AiChatService {
 
     private String truncateTitle(String content) {
         return content.length() <= 50 ? content : content.substring(0, 50) + "...";
+    }
+
+    private void publishUsage(Long userId, String content, String reply) {
+        if (userId == null) {
+            return;
+        }
+        AiProvider provider = providerRouter.resolveProvider(null);
+        AiUsageEvent event = new AiUsageEvent();
+        event.setUserId(userId);
+        event.setProviderCode(provider != null ? provider.getProviderCode() : "offline");
+        event.setModelId(provider != null ? provider.getDefaultModel() : null);
+        // ponytail: rough ~4 chars/token estimate; real counting needs tokenizer
+        event.setTokensInput(content != null ? Math.max(1, content.length() / 4) : 0);
+        event.setTokensOutput(reply != null ? Math.max(1, reply.length() / 4) : 0);
+        event.setRequestCount(1);
+        eventPublisher.publishEvent(event);
     }
 
     private String callProvider(ChatSession session, String userContent) {
