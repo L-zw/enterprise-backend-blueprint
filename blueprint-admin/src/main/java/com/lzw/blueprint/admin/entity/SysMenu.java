@@ -24,4 +24,7 @@ public class SysMenu extends BaseEntity {
     private Integer sort;
     private String icon;
     private Integer status;
+    private String component;
+    private Boolean hidden;
+    private String redirect;
 }

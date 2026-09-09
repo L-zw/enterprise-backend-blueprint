@@ -1,6 +1,10 @@
 server:
   port: 8080
 
+blueprint:
+  ai:
+    enabled: true
+
 spring:
   application:
     name: blueprint-admin
