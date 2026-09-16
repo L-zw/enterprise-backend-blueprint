@@ -4,6 +4,8 @@ server:
 blueprint:
   ai:
     enabled: true
+  workflow:
+    enabled: true
 
 spring:
   application:

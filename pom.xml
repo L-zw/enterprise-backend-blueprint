@@ -23,6 +23,7 @@
         <module>blueprint-core</module>
         <module>blueprint-admin</module>
         <module>blueprint-ai</module>
+        <module>blueprint-workflow</module>
     </modules>
 
     <properties>
@@ -35,6 +36,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <minio.version>8.5.17</minio.version>
         <spring-ai.version>1.0.0-M6</spring-ai.version>
+        <flowable.version>7.0.0</flowable.version>
     </properties>
 
     <dependencyManagement>
@@ -100,6 +102,21 @@
                 <groupId>com.lzw</groupId>
                 <artifactId>blueprint-ai</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lzw</groupId>
+                <artifactId>blueprint-workflow</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-engine</artifactId>
+                <version>${flowable.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-spring</artifactId>
+                <version>${flowable.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework.ai</groupId>
