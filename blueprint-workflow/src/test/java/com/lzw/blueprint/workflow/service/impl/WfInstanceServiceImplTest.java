@@ -2,6 +2,7 @@ package com.lzw.blueprint.workflow.service.impl;
 
 import com.lzw.blueprint.common.exception.BusinessException;
 import com.lzw.blueprint.workflow.config.FlowableConfig;
+import com.lzw.blueprint.workflow.dto.DiagramDto;
 import com.lzw.blueprint.workflow.dto.InstanceDto;
 import com.lzw.blueprint.workflow.dto.StartInstanceDto;
 import com.lzw.blueprint.workflow.entity.WfInstanceExt;
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -153,6 +155,20 @@ class WfInstanceServiceImplTest {
         request.setBpmnKey("no-such-key");
         BusinessException ex = assertThrows(BusinessException.class, () -> service.start(request, 1L));
         assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void diagramHighlightsCurrentNode() {
+        when(instanceExtMapper.insert(any())).thenReturn(1);
+        when(instanceExtMapper.selectOne(any())).thenReturn(extRow());
+
+        InstanceDto dto = service.start(request(), 1L);
+        DiagramDto diagram = service.diagram(dto.getInstanceId());
+
+        assertNotNull(diagram.getBpmnXml());
+        assertTrue(diagram.getBpmnXml().contains("ut-leave"));
+        assertTrue(diagram.getActiveActivityIds().contains("approve"));
+        assertTrue(diagram.getCompletedActivityIds().contains("start"));
     }
 
     @Test

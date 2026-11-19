@@ -1,6 +1,7 @@
 package com.lzw.blueprint.workflow.controller;
 
 import com.lzw.blueprint.common.Result;
+import com.lzw.blueprint.workflow.dto.DiagramDto;
 import com.lzw.blueprint.workflow.dto.InstanceDto;
 import com.lzw.blueprint.workflow.dto.StartInstanceDto;
 import com.lzw.blueprint.workflow.service.WfInstanceService;
@@ -40,5 +41,11 @@ public class WfInstanceController {
                                @RequestParam(required = false) String reason) {
         instanceService.cancel(id, reason);
         return Result.success();
+    }
+
+    @Operation(summary = "流程图（BPMN XML + 高亮节点）")
+    @GetMapping("/{id}/diagram")
+    public Result<DiagramDto> diagram(@PathVariable String id) {
+        return Result.success(instanceService.diagram(id));
     }
 }
