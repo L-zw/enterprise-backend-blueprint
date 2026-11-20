@@ -5,6 +5,7 @@ import com.lzw.blueprint.workflow.config.FlowableConfig;
 import com.lzw.blueprint.workflow.dto.TaskDto;
 import com.lzw.blueprint.workflow.entity.WfInstanceExt;
 import com.lzw.blueprint.workflow.mapper.WfInstanceExtMapper;
+import com.lzw.blueprint.workflow.service.WfCopyService;
 import org.flowable.engine.ProcessEngine;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +47,7 @@ class WfTaskServiceImplTest {
 
     private ProcessEngine engine;
     private WfInstanceExtMapper instanceExtMapper;
+    private WfCopyService copyService;
     private WfTaskServiceImpl service;
 
     @BeforeEach
@@ -57,7 +60,8 @@ class WfTaskServiceImplTest {
                 .addString("ut-leave.bpmn20.xml", BPMN_XML)
                 .deploy();
         instanceExtMapper = mock(WfInstanceExtMapper.class);
-        service = new WfTaskServiceImpl(engine, instanceExtMapper);
+        copyService = mock(WfCopyService.class);
+        service = new WfTaskServiceImpl(engine, instanceExtMapper, copyService);
     }
 
     @AfterEach
@@ -212,6 +216,49 @@ class WfTaskServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.moveTo(taskId, 1L, " "));
         assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void urgeAddsComment() {
+        startInstance();
+        String taskId = activeTaskId(1L);
+
+        service.urge(taskId);
+
+        assertTrue(engine.getTaskService().getTaskComments(taskId).stream()
+                .anyMatch(c -> c.getFullMessage().contains("催办")));
+    }
+
+    @Test
+    void urgeUnknownTaskThrows404() {
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.urge("no-such-task"));
+        assertEquals(404, ex.getCode());
+    }
+
+    @Test
+    void listOverdueFindsRecentTasksWithZeroHours() {
+        startInstance();
+
+        assertEquals(1, service.listOverdue(0).size());
+        assertTrue(service.listOverdue(24).isEmpty());
+    }
+
+    @Test
+    void listOverdueRejectsNegativeHours() {
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.listOverdue(-1));
+        assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void copyTaskDelegatesToCopyService() {
+        String instanceId = startInstance();
+        String taskId = activeTaskId(1L);
+        when(copyService.copy(any(), any())).thenReturn(2);
+
+        int rows = service.copyTask(taskId, List.of(2L, 3L));
+
+        assertEquals(2, rows);
+        verify(copyService).copy(eq(instanceId), eq(List.of(2L, 3L)));
     }
 
     @Test

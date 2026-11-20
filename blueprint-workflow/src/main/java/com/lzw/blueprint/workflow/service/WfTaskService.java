@@ -17,4 +17,10 @@ public interface WfTaskService {
     void transfer(String taskId, Long operatorId, Long targetUserId);
 
     void addSign(String taskId, Long operatorId, Long targetUserId);
+
+    void urge(String taskId);
+
+    List<TaskDto> listOverdue(int hours);
+
+    int copyTask(String taskId, List<Long> userIds);
 }

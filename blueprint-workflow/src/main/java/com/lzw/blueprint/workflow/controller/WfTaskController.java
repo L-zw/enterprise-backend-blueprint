@@ -84,6 +84,27 @@ public class WfTaskController {
         return Result.success();
     }
 
+    @Operation(summary = "催办")
+    @PostMapping("/{taskId}/urge")
+    public Result<Void> urge(@PathVariable String taskId) {
+        taskService.urge(taskId);
+        return Result.success();
+    }
+
+    @Operation(summary = "超时任务查询")
+    @GetMapping("/overdue")
+    public Result<List<TaskDto>> overdue(@RequestParam(defaultValue = "24") int hours) {
+        return Result.success(taskService.listOverdue(hours));
+    }
+
+    @Operation(summary = "抄送")
+    @PostMapping("/{taskId}/copy")
+    public Result<Integer> copy(@PathVariable String taskId,
+                                @RequestBody TaskActionDto body) {
+        return Result.success(taskService.copyTask(taskId,
+                body != null ? body.getUserIds() : null));
+    }
+
     private Long currentUserId(HttpServletRequest request) {
         return (Long) request.getAttribute("userId");
     }

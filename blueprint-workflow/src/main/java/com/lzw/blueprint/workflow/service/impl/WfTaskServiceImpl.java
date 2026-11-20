@@ -5,6 +5,7 @@ import com.lzw.blueprint.common.exception.BusinessException;
 import com.lzw.blueprint.workflow.dto.TaskDto;
 import com.lzw.blueprint.workflow.entity.WfInstanceExt;
 import com.lzw.blueprint.workflow.mapper.WfInstanceExtMapper;
+import com.lzw.blueprint.workflow.service.WfCopyService;
 import com.lzw.blueprint.workflow.service.WfTaskService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RuntimeService;
@@ -12,6 +13,8 @@ import org.flowable.task.api.Task;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,10 +23,12 @@ public class WfTaskServiceImpl implements WfTaskService {
 
     private final ProcessEngine processEngine;
     private final WfInstanceExtMapper instanceExtMapper;
+    private final WfCopyService copyService;
 
-    public WfTaskServiceImpl(ProcessEngine processEngine, WfInstanceExtMapper instanceExtMapper) {
+    public WfTaskServiceImpl(ProcessEngine processEngine, WfInstanceExtMapper instanceExtMapper, WfCopyService copyService) {
         this.processEngine = processEngine;
         this.instanceExtMapper = instanceExtMapper;
+        this.copyService = copyService;
     }
 
     @Override
@@ -85,6 +90,35 @@ public class WfTaskServiceImpl implements WfTaskService {
         }
         resolveOperableTask(taskId, operatorId);
         processEngine.getTaskService().addCandidateUser(taskId, String.valueOf(targetUserId));
+    }
+
+    @Override
+    public void urge(String taskId) {
+        Task task = resolveTask(taskId);
+        processEngine.getTaskService().addComment(taskId, task.getProcessInstanceId(), "[催办] 请尽快处理");
+    }
+
+    @Override
+    public List<TaskDto> listOverdue(int hours) {
+        if (hours < 0) {
+            throw new BusinessException(400, "hours 不能为负数");
+        }
+        Date threshold = Date.from(LocalDateTime.now().minusHours(hours)
+                .atZone(ZoneId.systemDefault()).toInstant());
+        return taskQuery()
+                .active()
+                .taskCreatedBefore(threshold)
+                .orderByTaskCreateTime().asc()
+                .list()
+                .stream()
+                .map(this::toTaskDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public int copyTask(String taskId, List<Long> userIds) {
+        Task task = resolveTask(taskId);
+        return copyService.copy(task.getProcessInstanceId(), userIds);
     }
 
     private Task resolveTask(String taskId) {
